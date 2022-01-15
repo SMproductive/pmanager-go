@@ -2,10 +2,7 @@ module github.com/SMproductive/pmanager-go
 
 go 1.17
 
-require (
-	fyne.io/fyne/v2 v2.1.2
-	github.com/fatih/color v1.13.0
-)
+require fyne.io/fyne/v2 v2.1.2
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -15,8 +12,6 @@ require (
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20211024062804-40e447a793be // indirect
 	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/goki/freetype v0.0.0-20181231101311-fa8a33aabaff // indirect
-	github.com/mattn/go-colorable v0.1.9 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564 // indirect
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9 // indirect
