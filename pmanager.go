@@ -5,12 +5,14 @@ import (
 	"os"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	//"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-	"github.com/SMproductive/pmanager-go/customWidgets"
+	"github.com/SMproductive/pmanager-go/customWidget"
+	"github.com/SMproductive/pmanager-go/customTheme"
 )
 
 var a fyne.App = app.New()
@@ -23,17 +25,25 @@ var bar []binding.String = make([]binding.String, 3)
 /* test things end */
 
 func main() {
+	/* testing */
+	a.Settings().SetTheme(customTheme.Nord)
+	/* testing end */
 	/* Login window */
+	logo := canvas.NewImageFromFile("/home/max/projects/logo/icon.svg")
+	logo.FillMode = canvas.ImageFillContain
+
 	lblDatabase := widget.NewLabel("Database: ")
 	entryDatabase := widget.NewEntryWithData(dataBase)
 	home, _ := os.UserHomeDir()
 	home += "/.pmanager/passwords"
 	dataBase.Set(home)
+
 	lblMasterPass := widget.NewLabel("Master Password:")
 	entryMasterPass := widget.NewPasswordEntry()
 	entryMasterPass.OnSubmitted = login
 	gridLogin := layout.NewGridLayout(2)
-	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblDatabase, entryDatabase, lblMasterPass, entryMasterPass)
+	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblDatabase, entryDatabase, lblMasterPass, entryMasterPass, logo)
+
 	windowLogin.SetContent(containerLogin)
 	windowLogin.ShowAndRun()
 }
@@ -104,6 +114,7 @@ func buildContent(chosenTitle <-chan string, con *fyne.Container) {
 			}
 		}
 		/* build wanted content */
+		/* testing */
 		switch title {
 		case "one":
 			lab := customWidget.NewContentEntry()
@@ -118,6 +129,8 @@ func buildContent(chosenTitle <-chan string, con *fyne.Container) {
 			lab.SetText("hello3")
 			con.Add(lab)
 		}
+		/* testing end */
 		con.Refresh()
 	}
 }
+/* testing */

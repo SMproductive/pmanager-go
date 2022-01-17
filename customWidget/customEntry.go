@@ -70,5 +70,3 @@ func (ent *ContentEntry) TappedSecondary(_ *fyne.PointEvent) {
 		ent.Disable()
 	}
 }
-
-
