@@ -25,8 +25,8 @@ var bar []binding.String = make([]binding.String, 3)
 /* test things end */
 
 func main() {
+	a.Settings().SetTheme(customTheme.Nord{})
 	/* testing */
-	a.Settings().SetTheme(customTheme.Nord)
 	/* testing end */
 	/* Login window */
 	logo := canvas.NewImageFromFile("/home/max/projects/logo/icon.svg")
@@ -40,7 +40,7 @@ func main() {
 
 	lblMasterPass := widget.NewLabel("Master Password:")
 	entryMasterPass := widget.NewPasswordEntry()
-	entryMasterPass.OnSubmitted = login
+	entryMasterPass.OnSubmitted = loggedIn
 	gridLogin := layout.NewGridLayout(2)
 	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblDatabase, entryDatabase, lblMasterPass, entryMasterPass, logo)
 
@@ -48,7 +48,7 @@ func main() {
 	windowLogin.ShowAndRun()
 }
 
-func login(password string) {
+func loggedIn(password string) {
 	windowLogin.Close()
 	/* testing */
 	for i := range bar {
