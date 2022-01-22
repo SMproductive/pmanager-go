@@ -3,7 +3,6 @@ package customWidget
 import (
 	//"fmt"
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -11,29 +10,37 @@ var SendTitle chan string
 
 type TitleEntry struct {
 	widget.Entry
-	IsBound bool
+	ID string
 }
 /* Creates an Entry with some custom functionality. */
 func NewTitleEntry() *TitleEntry {
 	ent := &TitleEntry{}
 	ent.ExtendBaseWidget(ent)
 	ent.Disable()
+	ent.Text = "new"
+	ent.ID = ent.Text
 	return ent
 }
-/* Binds a "binding.String" and sets "IsBound" to true. */
-func (ent *TitleEntry) BindStr(str binding.String) {
-	ent.Bind(str)
-	ent.IsBound = true
+func (ent *TitleEntry) Submitted(data map[string] []string, dataID []string) {
+	data[ent.Text] = append(data[ent.ID])
+	delete(data, ent.ID)
+	for i, v := range dataID {
+		if ent.ID == v {
+			dataID[i] = ent.Text
+			break
+		}
+	}
+	ent.ID = ent.Text
+	ent.Disable()
+	i := 0
+	for k := range data {
+		dataID[i] = k
+	}
 }
-/* Unbinds a "binding.String" and sets "IsBound" to false. */
-func (ent *TitleEntry) UnbindStr() {
-	ent.Unbind()
-	ent.IsBound = false
-}
-/* Sends the "Text" through the channel "SendTitle". */
+/* Sends the "id" through the channel "SendTitle". */
 func (ent *TitleEntry) Tapped(_ *fyne.PointEvent) {
 	if ent.Disabled() {
-		SendTitle <- ent.Text
+		SendTitle <- ent.ID
 	}
 }
 /* Enables or disables the widget. */
@@ -46,7 +53,8 @@ func (ent *TitleEntry) TappedSecondary(_ *fyne.PointEvent) {
 }
 
 type ContentEntry struct {
-	TitleEntry
+	widget.Entry
+	ID *string
 }
 /* Creates an Entry with some custom functionality. */
 func NewContentEntry() *ContentEntry {
@@ -54,6 +62,10 @@ func NewContentEntry() *ContentEntry {
 	ent.ExtendBaseWidget(ent)
 	ent.Disable()
 	return ent
+}
+func (ent *ContentEntry) Submitted() {
+	*ent.ID = ent.Text
+	ent.Disable()
 }
 /* If disabled: Copies the "Text" to clipboard else: it behaves as normal "widget.Entry". */
 func (ent *ContentEntry) Tapped(_ *fyne.PointEvent) {
@@ -69,4 +81,8 @@ func (ent *ContentEntry) TappedSecondary(_ *fyne.PointEvent) {
 	} else {
 		ent.Disable()
 	}
+}
+func (ent *ContentEntry) DoubleTapped(_ *fyne.PointEvent) {
+	ent.Password = !ent.Password
+	ent.Refresh()
 }

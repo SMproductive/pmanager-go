@@ -1,7 +1,11 @@
 package main
+/* TODO
+* data encryption
+* cloud implementation (google, nextcloud)
+* keyboard shortcuts
+*/
 
 import (
-	//"fmt"
 	"os"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -9,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	//"fyne.io/fyne/v2/dialog"
+
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"github.com/SMproductive/pmanager-go/customWidget"
@@ -16,71 +21,97 @@ import (
 )
 
 var a fyne.App = app.New()
-var windowLogin fyne.Window = a.NewWindow("Pmanager")
+var windowLogin fyne.Window = a.NewWindow("PmanagerLogin")
 var windowMain fyne.Window =  a.NewWindow("Pmanager")
-var dataBase binding.String = binding.NewString()
-/* test things */
-var data = []string{"one", "two", "three"}
-var bar []binding.String = make([]binding.String, 3)
-/* test things end */
+var dataPath binding.String = binding.NewString()
+var data = map[string] []string{}
+var dataID []string
+var containerTitles = &fyne.Container{}
 
 func main() {
 	a.Settings().SetTheme(customTheme.Nord{})
-	/* testing */
-	/* testing end */
 	/* Login window */
-	logo := canvas.NewImageFromFile("/home/max/projects/logo/icon.svg")
+	logo := canvas.NewImageFromFile("/home/max/projects/logo/icon.png")
 	logo.FillMode = canvas.ImageFillContain
+	poweredBy := canvas.NewImageFromFile("/home/max/projects/logo/poweredBy.png")
+	poweredBy.FillMode = canvas.ImageFillContain
 
 	lblDatabase := widget.NewLabel("Database: ")
-	entryDatabase := widget.NewEntryWithData(dataBase)
+	entryDatabase := widget.NewEntryWithData(dataPath)
 	home, _ := os.UserHomeDir()
 	home += "/.pmanager/passwords"
-	dataBase.Set(home)
+	dataPath.Set(home)
 
 	lblMasterPass := widget.NewLabel("Master Password:")
 	entryMasterPass := widget.NewPasswordEntry()
 	entryMasterPass.OnSubmitted = loggedIn
 	gridLogin := layout.NewGridLayout(2)
-	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblDatabase, entryDatabase, lblMasterPass, entryMasterPass, logo)
+	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblDatabase, entryDatabase, lblMasterPass, entryMasterPass, logo, poweredBy)
 
+	windowLogin.Resize(fyne.NewSize(600, 400))
+	windowLogin.CenterOnScreen()
 	windowLogin.SetContent(containerLogin)
 	windowLogin.ShowAndRun()
 }
 
 func loggedIn(password string) {
 	windowLogin.Close()
-	/* testing */
-	for i := range bar {
-		bar[i] = binding.NewString()
-		bar[i].Set(data[i])
+
+	/* data keys in slice are used as buffer when updating titles */
+	for k := range data {
+		dataID = append(dataID, k)
 	}
-	/*foo := customWidget.NewEntry()
-	foo1 := customWidget.NewEntry()
-	foo2 := customWidget.NewEntry()*/
-	/* testing end */
+
+	containerTitles = container.NewGridWithRows(1)
+	scrollTitles := container.NewHScroll(containerTitles)
+	/* Build all titles */
+	for i := len(data); i > 0; i-- {
+		ent := customWidget.NewTitleEntry()
+		ent.OnSubmitted = func(string) {
+			ent.Submitted(data, dataID)
+		}
+		ent.Text = dataID[i-1]
+		ent.ID = dataID[i-1]
+		containerTitles.Add(ent)
+		ent.Refresh()
+	}
+
+
 	btnAddTitle := widget.NewButton("Add", addTitle)
 	btnSave := widget.NewButton("Save", save)
-
-	listTitles := widget.NewList(numTitles, createTitle, updateTitle)
-	listTitles.OnSelected = selectedTitle
 
 	contentGrid := layout.NewGridLayout(2)
 	contentContainer := fyne.NewContainerWithLayout(contentGrid)
 
-	/* testing */
 	customWidget.SendTitle = make(chan string)
 	go buildContent(customWidget.SendTitle, contentContainer)
-	/* testing end */
+
 
 	topLeftBox := container.NewHBox(btnAddTitle, btnSave)
-	topSplit := container.NewHSplit(topLeftBox, listTitles)
+	topSplit := container.NewHSplit(topLeftBox, scrollTitles)
+	topSplit.Offset = 0
 	mainSplit := container.NewVSplit(topSplit, contentContainer)
+	mainSplit.Offset = 0.06
+
+
+	windowMain.CenterOnScreen()
+	windowMain.Resize(fyne.NewSize(1600, 900))
 	windowMain.SetContent(mainSplit)
 	go windowMain.Show()
 }
 
 func addTitle() {
+	str := "new"
+	data[str] = append(data[str] , str, str)
+	dataID = append(dataID, str)
+	ent := customWidget.NewTitleEntry()
+	ent.OnSubmitted = func(string) {
+		ent.Submitted(data, dataID)
+	}
+	ent.Text = str
+	ent.ID = str
+	containerTitles.Add(ent)
+	containerTitles.Refresh()
 
 }
 
@@ -88,49 +119,29 @@ func save() {
 
 }
 
-
-func numTitles() int {
-	return len(data)
-}
-func createTitle() fyne.CanvasObject {
-	return customWidget.NewTitleEntry()
-}
-func updateTitle(id widget.ListItemID, obj fyne.CanvasObject) {
-	/*obj.(*customWidget.Label).Alignment = 1 /* Aligned to center */
-	if !obj.(*customWidget.TitleEntry).IsBound {
-		obj.(*customWidget.TitleEntry).BindStr(bar[id])
-	}
-}
-func selectedTitle(id widget.ListItemID) {
-}
-
 func buildContent(chosenTitle <-chan string, con *fyne.Container) {
-	/* remove old widgets */
-	for {
+	for /* true */{
 		title, ok := <-chosenTitle
-		if ok {
-			for _, v := range con.Objects {
-				con.Remove(v)//con.Objects[i])
+		if ok { /* remove old widgets */
+			for i := len(con.Objects); i > 0; i-- {
+				con.Remove(con.Objects[i-1])
 			}
+			for i, v := range data[title] {
+				ent := customWidget.NewContentEntry()
+				ent.ID = &data[title][i]
+				ent.Text = v
+					ent.Password = i % 2 == 1
+				ent.OnSubmitted = func(string) {
+					ent.Submitted()
+				}
+				con.Add(ent)
+			}
+			btnAdd := widget.NewButton("Add", func() {
+				data[title] = append(data[title], "new", "new")
+				customWidget.SendTitle <- title
+			})
+			con.Add(btnAdd)
+			con.Refresh()
 		}
-		/* build wanted content */
-		/* testing */
-		switch title {
-		case "one":
-			lab := customWidget.NewContentEntry()
-			lab.SetText("hello")
-			con.Add(lab)
-		case "two":
-			lab := customWidget.NewContentEntry()
-			lab.SetText("hello2")
-			con.Add(lab)
-		case "three":
-			lab := customWidget.NewContentEntry()
-			lab.SetText("hello3")
-			con.Add(lab)
-		}
-		/* testing end */
-		con.Refresh()
 	}
 }
-/* testing */
