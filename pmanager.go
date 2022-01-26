@@ -172,7 +172,7 @@ func save() {
 }
 
 func changeMasterPass() {
-	win := a.NewWindow("PmanagerMasterPass")
+	win := a.NewWindow("PmanagerLogin")
 
 	logo := customWidget.NewIcon(resourceLogoPng, website)
 	builtBy := customWidget.NewIcon(resourceBuiltByPng, website)
