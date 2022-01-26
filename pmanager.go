@@ -39,7 +39,6 @@ var dataID []string
 var containerTitles = &fyne.Container{}
 
 const website string = "https://github.com/SMproductive/pmanager-go"
-const standardPath string = "/.pmanager"
 
 func main() {
 	runtime.GOMAXPROCS(10)
@@ -56,23 +55,11 @@ func login() {
 		dataPath = path
 	}
 	home, _ := os.UserHomeDir()
-	folder := home + standardPath
-	dataPath = home + standardPath + "/passwords"
-	entryDatabase.Text = home
+	dataPath = home + "/.pmanager/passwords"
+	entryDatabase.Text = dataPath
 
-	logoPath := folder + "/logo.png"
-	logoRes, err := fyne.LoadResourceFromPath(logoPath)
-	if err != nil {
-		logoRes = nil
-	}
-	logo := customWidget.NewIcon(logoRes, website)
-
-	builtByPath := folder + "/builtBy.png"
-	builtByRes, err := fyne.LoadResourceFromPath(builtByPath)
-	if err != nil {
-		builtByRes = nil
-	}
-	builtBy := customWidget.NewIcon(builtByRes, website)
+	logo := customWidget.NewIcon(resourceLogoPng, website)
+	builtBy := customWidget.NewIcon(resourceBuiltByPng, website)
 
 	lblMasterPass := widget.NewLabel("Master Password:")
 	entryMasterPass := widget.NewPasswordEntry()
@@ -187,21 +174,8 @@ func save() {
 func changeMasterPass() {
 	win := a.NewWindow("PmanagerMasterPass")
 
-	logoPath, _ := os.UserHomeDir()
-	logoPath += standardPath + "/logo.png"
-	logoRes, err := fyne.LoadResourceFromPath(logoPath)
-	if err != nil {
-		logoRes = nil
-	}
-	logo := customWidget.NewIcon(logoRes, website)
-
-	builtByPath, _ := os.UserHomeDir()
-	builtByPath += standardPath + "/builtBy.png"
-	builtByRes, err := fyne.LoadResourceFromPath(builtByPath)
-	if err != nil {
-		builtByRes = nil
-	}
-	builtBy := customWidget.NewIcon(builtByRes, website)
+	logo := customWidget.NewIcon(resourceLogoPng, website)
+	builtBy := customWidget.NewIcon(resourceBuiltByPng, website)
 
 	lblMasterPass := widget.NewLabel("New Master Password:")
 	entryMasterPass := widget.NewPasswordEntry()
