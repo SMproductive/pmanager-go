@@ -3,9 +3,11 @@ package main
 * cloud implementation (google, nextcloud)
 * keyboard shortcuts
 */
+/* FIXME
+* crashes when multi tapping save a couple of times
+*/
 
 import (
-	"fmt"
 	"crypto/sha256"
 	"crypto/rand"
 	"encoding/json"
@@ -16,7 +18,6 @@ import (
 	"strconv"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
@@ -26,42 +27,59 @@ import (
 
 var a fyne.App = app.New()
 var windowLogin fyne.Window = a.NewWindow("PmanagerLogin")
-var windowMain fyne.Window =  a.NewWindow("Pmanager")
+var windowContent fyne.Window =  a.NewWindow("Pmanager")
 
-var entryMasterPass = &widget.Entry{}
+
 var key [32]byte
+var dataPath string
 
-var entryDatabase = &widget.Entry{}
 var data = map[string] []string{}
 var dataID []string
 
 var containerTitles = &fyne.Container{}
 
+const website string = "https://github.com/SMproductive/pmanager-go"
+const standardPath string = "/.pmanager"
+
 func main() {
-	runtime.GOMAXPROCS(8)
+	runtime.GOMAXPROCS(10)
 	a.Settings().SetTheme(customTheme.Nord{})
 	go login()
 	windowLogin.ShowAndRun()
 }
 
 func login() {
-	/* some style TODO make it portable */
-	logo := canvas.NewImageFromFile("/home/max/projects/logo/icon.png")
-	logo.FillMode = canvas.ImageFillContain
-	poweredBy := canvas.NewImageFromFile("/home/max/projects/logo/poweredBy.png")
-	poweredBy.FillMode = canvas.ImageFillContain
-
 	lblDatabase := widget.NewLabel("Database: ")
-	entryDatabase = widget.NewEntry()
+
+	entryDatabase := widget.NewEntry()
+	entryDatabase.OnSubmitted = func (path string) {
+		dataPath = path
+	}
 	home, _ := os.UserHomeDir()
-	home += "/.pmanager/passwords"
+	folder := home + standardPath
+	dataPath = home + standardPath + "/passwords"
 	entryDatabase.Text = home
 
+	logoPath := folder + "/logo.png"
+	logoRes, err := fyne.LoadResourceFromPath(logoPath)
+	if err != nil {
+		logoRes = nil
+	}
+	logo := customWidget.NewIcon(logoRes, website)
+
+	builtByPath := folder + "/builtBy.png"
+	builtByRes, err := fyne.LoadResourceFromPath(builtByPath)
+	if err != nil {
+		builtByRes = nil
+	}
+	builtBy := customWidget.NewIcon(builtByRes, website)
+
 	lblMasterPass := widget.NewLabel("Master Password:")
-	entryMasterPass = widget.NewPasswordEntry()
-	entryMasterPass.OnSubmitted = content
+	entryMasterPass := widget.NewPasswordEntry()
+	entryMasterPass.OnSubmitted = content /* shows decrypted database */
+
 	gridLogin := layout.NewGridLayout(2)
-	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblDatabase, entryDatabase, lblMasterPass, entryMasterPass, logo, poweredBy)
+	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblDatabase, entryDatabase, lblMasterPass, entryMasterPass, logo, builtBy)
 
 	windowLogin.Resize(fyne.NewSize(600, 400))
 	windowLogin.CenterOnScreen()
@@ -69,12 +87,9 @@ func login() {
 }
 
 func content(password string) {
-	windowLogin.Hide()
-	defer windowLogin.Close()
-
 	/* Decryption of database */
-	key = sha256.Sum256([]byte(entryMasterPass.Text))
-	cipherText, err := ioutil.ReadFile(entryDatabase.Text)
+	key = sha256.Sum256([]byte(password))
+	cipherText, err := ioutil.ReadFile(dataPath)
 	if err == nil {
 		jsonData, err := dec(key[:], cipherText)
 		if err != nil {
@@ -82,15 +97,14 @@ func content(password string) {
 		}
 		err = json.Unmarshal(jsonData, &data)
 		if err != nil {
-			windowLogin.Show()
 			return
 		}
 	}
+	windowLogin.Hide()
+	defer windowLogin.Close()
 
 	/* data keys in slice are used as buffer when updating titles */
-	for k := range data {
-		dataID = append(dataID, k)
-	}
+	buildDataID()
 
 	containerTitles = container.NewGridWithRows(1)
 	scrollTitles := container.NewHScroll(containerTitles)
@@ -99,6 +113,8 @@ func content(password string) {
 	btnAddTitle := widget.NewButton("Add", addTitle)
 	btnSave := widget.NewButton("Save", save)
 
+	btnChangePassword := widget.NewButton("Change MPW", changeMasterPass)
+
 	contentGrid := layout.NewGridLayout(2)
 	contentContainer := fyne.NewContainerWithLayout(contentGrid)
 
@@ -106,36 +122,37 @@ func content(password string) {
 	go buildContent(customWidget.SendTitle, contentContainer)
 
 
-	topLeftBox := container.NewHBox(btnAddTitle, btnSave)
+	topLeftBox := container.NewHBox(btnAddTitle, btnSave, btnChangePassword)
 	topSplit := container.NewHSplit(topLeftBox, scrollTitles)
 	topSplit.Offset = 0
 	mainSplit := container.NewVSplit(topSplit, contentContainer)
 	mainSplit.Offset = 0.06
 
 
-	windowMain.CenterOnScreen()
-	windowMain.Resize(fyne.NewSize(1600, 900))
-	windowMain.SetContent(mainSplit)
-	go windowMain.Show()
+	windowContent.CenterOnScreen()
+	windowContent.Resize(fyne.NewSize(1600, 900))
+	windowContent.SetContent(mainSplit)
+	go windowContent.Show()
 }
 
 func addTitle() {
 	str := "new"
-	data[str] = append(data[str] , str, str)
-	dataID = append(dataID, str)
-	ent := customWidget.NewTitleEntry()
-	ent.OnSubmitted = func(string) {
-		ent.Submitted(data, dataID)
+	if data[str] == nil {
+		data[str] = append(data[str] , str, str)
+		dataID = append(dataID, str)
+		ent := customWidget.NewTitleEntry()
+		ent.OnSubmitted = func(string) {
+			ent.Submitted(data, dataID)
+		}
+		ent.Text = str
+		ent.ID = str
+		containerTitles.Add(ent)
+		containerTitles.Refresh()
 	}
-	ent.Text = str
-	ent.ID = str
-	containerTitles.Add(ent)
-	containerTitles.Refresh()
 }
 
 func save() {
 	/* clean data */
-	fmt.Println(data["new"] )
 	for k := range data {
 		offset := 0
 		for i := range data[k]{
@@ -162,8 +179,44 @@ func save() {
 	dir, _ := os.UserHomeDir()
 	dir +=  "/.pmanager"
 	os.Mkdir(dir, 0660)
-	ioutil.WriteFile(entryDatabase.Text, cipherText, 0660)
+	ioutil.WriteFile(dataPath, cipherText, 0660)
+	buildDataID()
 	buildTitles()
+}
+
+func changeMasterPass() {
+	win := a.NewWindow("PmanagerMasterPass")
+
+	logoPath, _ := os.UserHomeDir()
+	logoPath += standardPath + "/logo.png"
+	logoRes, err := fyne.LoadResourceFromPath(logoPath)
+	if err != nil {
+		logoRes = nil
+	}
+	logo := customWidget.NewIcon(logoRes, website)
+
+	builtByPath, _ := os.UserHomeDir()
+	builtByPath += standardPath + "/builtBy.png"
+	builtByRes, err := fyne.LoadResourceFromPath(builtByPath)
+	if err != nil {
+		builtByRes = nil
+	}
+	builtBy := customWidget.NewIcon(builtByRes, website)
+
+	lblMasterPass := widget.NewLabel("New Master Password:")
+	entryMasterPass := widget.NewPasswordEntry()
+	entryMasterPass.OnSubmitted = func(text string) {
+		key = sha256.Sum256([]byte(text))
+		win.Close()
+	}
+
+	gridLogin := layout.NewGridLayout(2)
+	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblMasterPass, entryMasterPass, logo, builtBy)
+
+	win.Resize(fyne.NewSize(600, 400))
+	win.CenterOnScreen()
+	win.SetContent(containerLogin)
+	go win.Show()
 }
 
 func buildTitles() {
@@ -171,6 +224,7 @@ func buildTitles() {
 	for i := len(containerTitles.Objects); i > 0; i-- {
 		containerTitles.Remove(containerTitles.Objects[i-1])
 	}
+
 	/* Build all titles */
 	for i := len(data); i > 0; i-- {
 		ent := customWidget.NewTitleEntry()
@@ -208,7 +262,7 @@ func buildContent(chosenTitle <-chan string, con *fyne.Container) {
 				customWidget.SendTitle <- title
 			})
 			btnGen := widget.NewButton("Generate", func() {
-				generate(title)
+				generateRandom(title)
 				customWidget.SendTitle <- title
 			})
 			con.Add(btnAdd)
@@ -218,7 +272,7 @@ func buildContent(chosenTitle <-chan string, con *fyne.Container) {
 	}
 }
 
-func generate(title string) {
+func generateRandom(title string) {
 	titleConfig := "Random Generator"
 	word := ""
 	/* make default ascii list */
@@ -261,4 +315,12 @@ func generate(title string) {
 		word += string(data[titleConfig][3][mrand.Int()%len(data[titleConfig][3])])
 	}
 	data[title] = append(data[title], "New random", word)
+}
+
+/* builds the slice from ground up new */
+func buildDataID() {
+	dataID = make([]string, 0, 10)
+	for k := range data {
+		dataID = append(dataID, k)
+	}
 }
