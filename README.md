@@ -11,16 +11,20 @@
 * Or compile it yourself using go
 
 ### Usage
+#### Important to know
+* Save only applies if save is pressed
+* There is no confirmation for deletion
+* There is no backup and restore -> a changed password stays changed
 
 #### Title entries
-* Right click: enables it for change (submit change with enter -> save change with save button)
+* Right click: enables it for change (submit change with enter)
 * Left click: opens content
-* Empty: will be deleted on save
+* If empty: will be deleted on save
 <br>
 <img src="pics/titleEntries.png" alt="Can not display image!" width=1000/>
 
 #### Content entries
-* Right click: enables it for change (submit change with enter -> save change with save button)
+* Right click: enables it for change (submit change with enter)
 * Double left click: toggles visibility of text
 * Left click: copies the text to clipboard
 * If empty: will be deleted on save
