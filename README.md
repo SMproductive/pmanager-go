@@ -29,7 +29,7 @@
 * Left click: copies the text to clipboard
 * If empty: will be deleted on save
 <br>
-<img src="pics/contentEntry.png" alt="Can not display image! "width=1000/>
+<img src="pics/contentEntry.png" alt="Can not display image!" width=1000/>
 
 
 #### Buttons
@@ -37,3 +37,5 @@
 * Save: saves the database with the provided password
 * Change MPW: changes the password for database encryption(save is needed to confirm the new one)
 * Generate: generates a random string with provided characters and length in "Random Generator"(default: 21 ASCII characters)
+<br>
+<img src="pics/buttons.png" alt="Can not display image!" width=1000/>
