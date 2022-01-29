@@ -4,13 +4,15 @@ package main
 * keyboard shortcuts
 */
 /* FIXME
-* crashes when multi tapping save a couple of times
+* crashes after when tapping new titleentry
+* scroll on mobile device
 */
 
 import (
 	"crypto/sha256"
 	"crypto/rand"
 	"encoding/json"
+	"image/color"
 	"runtime"
 	"io/ioutil"
 	mrand "math/rand"
@@ -18,6 +20,7 @@ import (
 	"strconv"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
@@ -25,120 +28,110 @@ import (
 	"github.com/SMproductive/pmanager-go/customTheme"
 )
 
-var a fyne.App = app.New()
-var windowLogin fyne.Window = a.NewWindow("PmanagerLogin")
-var windowContent fyne.Window =  a.NewWindow("Pmanager")
-
+var a fyne.App
 
 var key [32]byte
 var dataPath string
-
-var data = map[string] []string{}
+var data map[string] []string
 var dataID []string
-
-var containerTitles = &fyne.Container{}
 
 const website string = "https://github.com/SMproductive/pmanager-go"
 
 func main() {
 	runtime.GOMAXPROCS(10)
+	a = app.New()
 	a.Settings().SetTheme(customTheme.Nord{})
-	go login()
-	windowLogin.ShowAndRun()
+
+	win := a.NewWindow("pmanager")
+	win.CenterOnScreen()
+	login(win)
+	win.ShowAndRun()
 }
 
-func login() {
+func login(win fyne.Window) {
+	if runtime.GOOS == "android" {
+		dataPath = "/storage/emulated/0/Documents/pmanager"
+	} else {
+		home, _ := os.UserHomeDir()
+		dataPath = home + "/.pmanager/passwords"
+	}
+
 	lblDatabase := widget.NewLabel("Database: ")
 
-	entryDatabase := widget.NewEntry()
+	entryDatabase := customWidget.NewLoginEntry()
+	entryDatabase.Password = false
 	entryDatabase.OnSubmitted = func (path string) {
 		dataPath = path
 	}
-	home, _ := os.UserHomeDir()
-	dataPath = home + "/.pmanager/passwords"
 	entryDatabase.Text = dataPath
 
 	logo := customWidget.NewIcon(resourceLogoPng, website)
 	builtBy := customWidget.NewIcon(resourceBuiltByPng, website)
 
 	lblMasterPass := widget.NewLabel("Master Password:")
-	entryMasterPass := widget.NewPasswordEntry()
-	entryMasterPass.OnSubmitted = content /* shows decrypted database */
+	entryMasterPass := customWidget.NewLoginEntry()
+	entryMasterPass.OnSubmitted = func(password string) {
+		if decrypt(password) == nil {
+			UI(win)
+		}
+	}
 
 	gridLogin := layout.NewGridLayout(2)
 	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblDatabase, entryDatabase, lblMasterPass, entryMasterPass, logo, builtBy)
 
-	windowLogin.Resize(fyne.NewSize(600, 400))
-	windowLogin.CenterOnScreen()
-	windowLogin.SetContent(containerLogin)
+	win.Resize(fyne.NewSize(600, 400))
+	win.SetContent(containerLogin)
+	data = make(map[string][]string)
 }
 
-func content(password string) {
-	/* Decryption of database */
-	key = sha256.Sum256([]byte(password))
-	cipherText, err := ioutil.ReadFile(dataPath)
-	if err == nil {
-		jsonData, err := dec(key[:], cipherText)
-		if err != nil {
-			panic(err)
-		}
-		err = json.Unmarshal(jsonData, &data)
-		if err != nil {
-			return
-		}
-	}
-	windowLogin.Hide()
-	defer windowLogin.Close()
-
-	/* data keys in slice are used as buffer when updating titles */
+func UI(win fyne.Window) {
 	buildDataID()
 
-	containerTitles = container.NewGridWithRows(1)
+	gridContent := layout.NewGridLayout(2)
+	containerContent := fyne.NewContainerWithLayout(gridContent)
+
+	containerTitles := container.NewHBox()
 	scrollTitles := container.NewHScroll(containerTitles)
-	buildTitles()
+	buildTitles(containerTitles, containerContent)
 
-	btnAddTitle := widget.NewButton("Add", addTitle)
-	btnSave := widget.NewButton("Save", save)
-
-	btnChangePassword := widget.NewButton("Change MPW", changeMasterPass)
-
-	contentGrid := layout.NewGridLayout(2)
-	contentContainer := fyne.NewContainerWithLayout(contentGrid)
-
-	customWidget.SendTitle = make(chan string)
-	go buildContent(customWidget.SendTitle, contentContainer)
-
+	btnChangePassword := widget.NewButton("Change MPW", func() {
+		changeMasterPass(containerTitles, containerContent, win)
+	})
+	btnAddTitle := widget.NewButton("Add", func() {
+		addTitle(containerTitles, containerContent)
+	})
+	btnSave := widget.NewButton("Save",
+	func() {
+		save(containerTitles, containerContent)
+	})
 
 	topLeftBox := container.NewHBox(btnAddTitle, btnSave, btnChangePassword)
 	topSplit := container.NewHSplit(topLeftBox, scrollTitles)
 	topSplit.Offset = 0
-	mainSplit := container.NewVSplit(topSplit, contentContainer)
-	mainSplit.Offset = 0.06
-
-
-	windowContent.CenterOnScreen()
-	windowContent.Resize(fyne.NewSize(1600, 900))
-	windowContent.SetContent(mainSplit)
-	go windowContent.Show()
+	mainSplit := container.NewVSplit(topSplit, containerContent)
+	win.SetContent(mainSplit)
 }
 
-func addTitle() {
+func addTitle(titles, content *fyne.Container) {
 	str := "new"
 	if data[str] == nil {
 		data[str] = append(data[str] , str, str)
 		dataID = append(dataID, str)
 		ent := customWidget.NewTitleEntry()
+		ent.SetContent = buildContent
 		ent.OnSubmitted = func(string) {
 			ent.Submitted(data, dataID)
 		}
+		ent.ContentContainer = content
+		ent.TitlesContainer = titles
 		ent.Text = str
 		ent.ID = str
-		containerTitles.Add(ent)
-		containerTitles.Refresh()
+		titles.Add(ent)
+		titles.Refresh()
 	}
 }
 
-func save() {
+func save(containerTitles, contentContainer *fyne.Container) {
 	/* clean data */
 	for k := range data {
 		offset := 0
@@ -163,90 +156,101 @@ func save() {
 	if err != nil {
 		panic(err)
 	}
-	dir, _ := os.UserHomeDir()
-	dir +=  "/.pmanager"
-	os.Mkdir(dir, 0660)
+	if runtime.GOOS != "android" {
+		dir, _ := os.UserHomeDir()
+		dir +=  "/.pmanager"
+		os.Mkdir(dir, 0660)
+	}
 	ioutil.WriteFile(dataPath, cipherText, 0660)
 	buildDataID()
-	buildTitles()
+	buildTitles(containerTitles, contentContainer)
+	buildContent("", containerTitles, contentContainer)
 }
 
-func changeMasterPass() {
-	win := a.NewWindow("PmanagerLogin")
-
+func changeMasterPass(titles, content *fyne.Container, win fyne.Window) {
 	logo := customWidget.NewIcon(resourceLogoPng, website)
 	builtBy := customWidget.NewIcon(resourceBuiltByPng, website)
 
 	lblMasterPass := widget.NewLabel("New Master Password:")
-	entryMasterPass := widget.NewPasswordEntry()
-	entryMasterPass.OnSubmitted = func(text string) {
-		key = sha256.Sum256([]byte(text))
-		win.Close()
+	entryMasterPass := customWidget.NewLoginEntry()
+	entryMasterPass.OnSubmitted = func(password string) {
+		key = sha256.Sum256([]byte(password))
+		UI(win)
 	}
 
 	gridLogin := layout.NewGridLayout(2)
 	containerLogin := fyne.NewContainerWithLayout(gridLogin, lblMasterPass, entryMasterPass, logo, builtBy)
 
-	win.Resize(fyne.NewSize(600, 400))
-	win.CenterOnScreen()
 	win.SetContent(containerLogin)
-	go win.Show()
+	win.Show()
 }
 
-func buildTitles() {
+func buildTitles(titles, content *fyne.Container) {
 	/* remove all */
-	for i := len(containerTitles.Objects); i > 0; i-- {
-		containerTitles.Remove(containerTitles.Objects[i-1])
+	for i := len(titles.Objects); i > 0; i-- {
+		titles.Remove(titles.Objects[i-1])
 	}
 
 	/* Build all titles */
 	for i := len(data); i > 0; i-- {
+		if runtime.GOOS == "android" {
+			rect := canvas.NewRectangle(color.Black)
+			rect.Resize(fyne.NewSize(100, 100))
+			titles.Add(rect)
+		}
 		ent := customWidget.NewTitleEntry()
-		ent.OnSubmitted = func(string) {
+		ent.OnSubmitted = func(title string) {
 			ent.Submitted(data, dataID)
 		}
+		ent.SetContent = buildContent
+		ent.ContentContainer = content
+		ent.TitlesContainer = titles
 		ent.Text = dataID[i-1]
 		ent.ID = dataID[i-1]
-		containerTitles.Add(ent)
+		titles.Add(ent)
 		ent.Refresh()
 	}
 }
 
-func buildContent(chosenTitle <-chan string, con *fyne.Container) {
-	for /* true */{
-		title, ok := <-chosenTitle
-		if ok { /* remove old widgets */
-			for i := len(con.Objects); i > 0; i-- {
-				con.Remove(con.Objects[i-1])
-			}
-			/* build new widgets */
-			for i, v := range data[title] {
-				ent := customWidget.NewContentEntry()
-				ent.ID = &data[title][i]
-				ent.Text = v
-					ent.Password = i % 2 == 1
-				ent.OnSubmitted = func(string) {
-					ent.Submitted()
-				}
-				con.Add(ent)
-			}
-			/* add functionality */
-			btnAdd := widget.NewButton("Add", func() {
-				data[title] = append(data[title], "new", "new")
-				customWidget.SendTitle <- title
-			})
-			btnGen := widget.NewButton("Generate", func() {
-				generateRandom(title)
-				customWidget.SendTitle <- title
-			})
-			con.Add(btnAdd)
-			con.Add(btnGen)
-			con.Refresh()
+func buildContent(chosenTitle string, titles, content *fyne.Container) {
+	for i := len(titles.Objects); i>0; i-- {
+		titles.Objects[i-1].(*customWidget.TitleEntry).TextStyle.Bold = false
+		if titles.Objects[i-1].(*customWidget.TitleEntry).Text == chosenTitle {
+			titles.Objects[i-1].(*customWidget.TitleEntry).TextStyle.Bold = true
 		}
+		titles.Objects[i-1].Refresh()
 	}
+	for i := len(content.Objects); i > 0; i-- {
+		content.Remove(content.Objects[i-1])
+	}
+	/* build new widgets */
+	for i, v := range data[chosenTitle] {
+		ent := customWidget.NewContentEntry()
+		ent.ID = &data[chosenTitle][i]
+		ent.Text = v
+		ent.Password = i % 2 == 1
+		ent.OnSubmitted = func(string) {
+			ent.Submitted()
+		}
+		content.Add(ent)
+	}
+	/* add functionality */
+	btnAdd := widget.NewButton("Add", func() {
+		data[chosenTitle] = append(data[chosenTitle], "new", "new")
+		buildContent(chosenTitle,titles, content)
+	})
+	btnGen := widget.NewButton("Generate", func() {
+		generateRandom(chosenTitle, titles, content)
+		buildContent(chosenTitle, titles, content)
+	})
+	if chosenTitle != "" {
+		content.Add(btnAdd)
+		content.Add(btnGen)
+	}
+	content.Refresh()
 }
 
-func generateRandom(title string) {
+func generateRandom(title string, titles, content *fyne.Container) {
 	titleConfig := "Random Generator"
 	word := ""
 	/* make default ascii list */
@@ -258,11 +262,13 @@ func generateRandom(title string) {
 		ent := customWidget.NewTitleEntry()
 		ent.ID = titleConfig
 		ent.Text = titleConfig
+		ent.ContentContainer = content
+		ent.TitlesContainer = titles
 		ent.OnSubmitted = func(string) {
 			ent.Submitted(data, dataID)
 		}
-		containerTitles.Add(ent)
-		containerTitles.Refresh()
+		content.Add(ent)
+		content.Refresh()
 	}
 	length, err := strconv.Atoi(data[titleConfig][1])
 	/* if no number set default value */
@@ -297,4 +303,21 @@ func buildDataID() {
 	for k := range data {
 		dataID = append(dataID, k)
 	}
+}
+
+func decrypt(password string) error {
+	/* Decryption of database */
+	key = sha256.Sum256([]byte(password))
+	cipherText, err := ioutil.ReadFile(dataPath)
+	if err == nil {
+		jsonData, err := dec(key[:], cipherText)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(jsonData, &data)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
