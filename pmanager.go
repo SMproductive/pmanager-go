@@ -4,15 +4,13 @@ package main
 * keyboard shortcuts
 */
 /* FIXME
-* crashes after when tapping new titleentry
-* scroll on mobile device
+* crashes on mobile
 */
 
 import (
 	"crypto/sha256"
 	"crypto/rand"
 	"encoding/json"
-	"image/color"
 	"runtime"
 	"io/ioutil"
 	mrand "math/rand"
@@ -20,7 +18,6 @@ import (
 	"strconv"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
@@ -60,9 +57,6 @@ func login(win fyne.Window) {
 
 	entryDatabase := customWidget.NewLoginEntry()
 	entryDatabase.Password = false
-	entryDatabase.OnSubmitted = func (path string) {
-		dataPath = path
-	}
 	entryDatabase.Text = dataPath
 
 	logo := customWidget.NewIcon(resourceLogoPng, website)
@@ -71,6 +65,7 @@ func login(win fyne.Window) {
 	lblMasterPass := widget.NewLabel("Master Password:")
 	entryMasterPass := customWidget.NewLoginEntry()
 	entryMasterPass.OnSubmitted = func(password string) {
+		dataPath = entryDatabase.Text
 		if decrypt(password) == nil {
 			UI(win)
 		}
@@ -90,8 +85,16 @@ func UI(win fyne.Window) {
 	gridContent := layout.NewGridLayout(2)
 	containerContent := fyne.NewContainerWithLayout(gridContent)
 
-	containerTitles := container.NewHBox()
-	scrollTitles := container.NewHScroll(containerTitles)
+	var containerTitles *fyne.Container
+	var scrollTitles *container.Scroll
+	if runtime.GOOS == "android" {
+		containerTitles = container.NewVBox()
+		scrollTitles = container.NewVScroll(containerTitles)
+	} else {
+		containerTitles = container.NewHBox()
+		scrollTitles = container.NewHScroll(containerTitles)
+	}
+
 	buildTitles(containerTitles, containerContent)
 
 	btnChangePassword := widget.NewButton("Change MPW", func() {
@@ -100,15 +103,17 @@ func UI(win fyne.Window) {
 	btnAddTitle := widget.NewButton("Add", func() {
 		addTitle(containerTitles, containerContent)
 	})
-	btnSave := widget.NewButton("Save",
-	func() {
+	btnSave := widget.NewButton("Save", func() {
 		save(containerTitles, containerContent)
 	})
 
 	topLeftBox := container.NewHBox(btnAddTitle, btnSave, btnChangePassword)
 	topSplit := container.NewHSplit(topLeftBox, scrollTitles)
-	topSplit.Offset = 0
+	topSplit.SetOffset(0)
+
 	mainSplit := container.NewVSplit(topSplit, containerContent)
+	mainSplit.SetOffset(0.12)
+
 	win.SetContent(mainSplit)
 }
 
@@ -127,6 +132,10 @@ func addTitle(titles, content *fyne.Container) {
 		ent.Text = str
 		ent.ID = str
 		titles.Add(ent)
+		if runtime.GOOS == "android" {
+			space := widget.NewLabel("")
+			titles.Add(space)
+		}
 		titles.Refresh()
 	}
 }
@@ -193,11 +202,6 @@ func buildTitles(titles, content *fyne.Container) {
 
 	/* Build all titles */
 	for i := len(data); i > 0; i-- {
-		if runtime.GOOS == "android" {
-			rect := canvas.NewRectangle(color.Black)
-			rect.Resize(fyne.NewSize(100, 100))
-			titles.Add(rect)
-		}
 		ent := customWidget.NewTitleEntry()
 		ent.OnSubmitted = func(title string) {
 			ent.Submitted(data, dataID)
@@ -207,9 +211,15 @@ func buildTitles(titles, content *fyne.Container) {
 		ent.TitlesContainer = titles
 		ent.Text = dataID[i-1]
 		ent.ID = dataID[i-1]
+
 		titles.Add(ent)
 		ent.Refresh()
+		if runtime.GOOS == "android" {
+			space := widget.NewLabel("")
+			titles.Add(space)
+		}
 	}
+	titles.Refresh()
 }
 
 func buildContent(chosenTitle string, titles, content *fyne.Container) {
