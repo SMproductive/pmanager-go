@@ -4,12 +4,27 @@ import (
 	//"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
+	"fyne.io/fyne/v2/driver/mobile"
 )
 
-var SendTitle chan string
+type LoginEntry struct {
+	widget.Entry
+}
+func NewLoginEntry() *LoginEntry {
+	ent := &LoginEntry{}
+	ent.ExtendBaseWidget(ent)
+	ent.Password = true
+	return ent
+}
+func (ent *LoginEntry) Keyboard() mobile.KeyboardType {
+	return mobile.DefaultKeyboard
+}
 
 type TitleEntry struct {
 	widget.Entry
+	SetContent func(string, *fyne.Container, *fyne.Container)
+	ContentContainer *fyne.Container
+	TitlesContainer *fyne.Container
 	ID string
 }
 /* Creates an Entry with some custom functionality. */
@@ -17,9 +32,11 @@ func NewTitleEntry() *TitleEntry {
 	ent := &TitleEntry{}
 	ent.ExtendBaseWidget(ent)
 	ent.Disable()
-	ent.Text = "new"
 	ent.ID = ent.Text
 	return ent
+}
+func (ent *TitleEntry) Keyboard() mobile.KeyboardType {
+	return mobile.DefaultKeyboard
 }
 func (ent *TitleEntry) Submitted(data map[string] []string, dataID []string) {
 	data[ent.Text] = append(data[ent.ID])
@@ -37,11 +54,8 @@ func (ent *TitleEntry) Submitted(data map[string] []string, dataID []string) {
 		dataID[i] = k
 	}
 }
-/* Sends the "id" through the channel "SendTitle". */
 func (ent *TitleEntry) Tapped(_ *fyne.PointEvent) {
-	if ent.Disabled() {
-		SendTitle <- ent.ID
-	}
+	ent.SetContent(ent.ID, ent.TitlesContainer, ent.ContentContainer)
 }
 /* Enables or disables the widget. */
 func (ent *TitleEntry) TappedSecondary(_ *fyne.PointEvent) {
@@ -62,6 +76,9 @@ func NewContentEntry() *ContentEntry {
 	ent.ExtendBaseWidget(ent)
 	ent.Disable()
 	return ent
+}
+func (ent *ContentEntry) Keyboard() mobile.KeyboardType {
+	return mobile.DefaultKeyboard
 }
 func (ent *ContentEntry) Submitted() {
 	*ent.ID = ent.Text
