@@ -3,6 +3,9 @@ package main
 * cloud implementation (google, nextcloud)
 * keyboard shortcuts
 */
+/* FIXME
+* Could not create new file on android
+*/
 
 import (
 	"crypto/sha256"
@@ -43,8 +46,12 @@ func main() {
 }
 
 func login(win fyne.Window) {
-	home, _ := os.UserHomeDir()
-	dataPath = home + "/.pmanager/passwords"
+	if runtime.GOOS == "android" {
+		dataPath = "/storage/emulated/0/Documents/pmanager"
+	} else {
+		home, _ := os.UserHomeDir()
+		dataPath = home + "/.pmanager/passwords"
+	}
 
 	lblDatabase := widget.NewLabel("Database: ")
 
@@ -73,6 +80,7 @@ func login(win fyne.Window) {
 }
 
 func UI(win fyne.Window) {
+	var mainSplit *container.Split
 	buildDataID()
 
 	gridContent := layout.NewGridLayout(2)
@@ -80,10 +88,6 @@ func UI(win fyne.Window) {
 
 	var containerTitles *fyne.Container
 	var scrollTitles *container.Scroll
-	containerTitles = container.NewHBox()
-	scrollTitles = container.NewHScroll(containerTitles)
-
-	buildTitles(containerTitles, containerContent)
 
 	btnChangePassword := widget.NewButton("Change MPW", func() {
 		changeMasterPass(containerTitles, containerContent, win)
@@ -94,15 +98,30 @@ func UI(win fyne.Window) {
 	btnSave := widget.NewButton("Save", func() {
 		save(containerTitles, containerContent)
 	})
+	topBox := container.NewHBox(btnAddTitle, btnSave, btnChangePassword)
 
-	topLeftBox := container.NewHBox(btnAddTitle, btnSave, btnChangePassword)
-	topSplit := container.NewHSplit(topLeftBox, scrollTitles)
-	topSplit.SetOffset(0)
+	if runtime.GOOS == "android" {
+		titleGrid := layout.NewGridLayout(2)
+		containerTitles = container.New(titleGrid)
+		scrollTitles = container.NewVScroll(containerTitles)
+		buildTitles(containerTitles, containerContent)
 
-	mainSplit := container.NewVSplit(topSplit, containerContent)
-	mainSplit.SetOffset(0.12)
+		mainSplit = container.NewVSplit(topBox, scrollTitles)
+		mainSplit.SetOffset(0.12)
+	} else {
+		containerTitles = container.NewHBox()
+		scrollTitles = container.NewHScroll(containerTitles)
 
+		buildTitles(containerTitles, containerContent)
+
+		topSplit := container.NewHSplit(topBox, scrollTitles)
+		topSplit.SetOffset(0)
+
+		mainSplit = container.NewVSplit(topSplit, containerContent)
+		mainSplit.SetOffset(0.12)
+	}
 	win.SetContent(mainSplit)
+
 }
 
 func addTitle(titles, content *fyne.Container) {
@@ -149,10 +168,14 @@ func save(containerTitles, contentContainer *fyne.Container) {
 	if err != nil {
 		panic(err)
 	}
-	dir, _ := os.UserHomeDir()
-	dir +=  "/.pmanager"
-	os.Mkdir(dir, 0660)
-	ioutil.WriteFile(dataPath, cipherText, 0660)
+	if runtime.GOOS == "android" {
+		ioutil.WriteFile(dataPath, cipherText, 0660)
+	} else {
+		dir, _ := os.UserHomeDir()
+		dir +=  "/.pmanager"
+		os.Mkdir(dir, 0660)
+		ioutil.WriteFile(dataPath, cipherText, 0660)
+	}
 	buildDataID()
 	buildTitles(containerTitles, contentContainer)
 	buildContent("", containerTitles, contentContainer)
@@ -182,58 +205,120 @@ func buildTitles(titles, content *fyne.Container) {
 		titles.Remove(titles.Objects[i-1])
 	}
 
-	/* Build all titles */
-	for i := len(data); i > 0; i-- {
-		ent := customWidget.NewTitleEntry()
-		ent.OnSubmitted = func(title string) {
-			ent.Submitted(data, dataID)
-		}
-		ent.SetContent = buildContent
-		ent.ContentContainer = content
-		ent.TitlesContainer = titles
-		ent.Text = dataID[i-1]
-		ent.ID = dataID[i-1]
+	/* Build all titles for android */
+	if runtime.GOOS == "android" {
+		for i := len(data); i > 0; i-- {
+			ent := customWidget.NewTitleEntry()
+			ent.OnSubmitted = func(title string) {
+				ent.Submitted(data, dataID)
+			}
+			ent.SetContent = buildContent
+			ent.ContentContainer = content
+			ent.TitlesContainer = titles
+			ent.Text = dataID[i-1]
+			ent.ID = dataID[i-1]
 
-		titles.Add(ent)
-		ent.Refresh()
+			titles.Add(ent)
+			ent.Refresh()
+			if i%2 != len(data)%2 {
+				for s:=0; s<2; s++ {
+					titles.Add(widget.NewLabel(""))
+				}
+			}
+		}
+	} else {
+		/* Build all titles */
+		for i := len(data); i > 0; i-- {
+			ent := customWidget.NewTitleEntry()
+			ent.OnSubmitted = func(title string) {
+				ent.Submitted(data, dataID)
+			}
+			ent.SetContent = buildContent
+			ent.ContentContainer = content
+			ent.TitlesContainer = titles
+			ent.Text = dataID[i-1]
+			ent.ID = dataID[i-1]
+
+			titles.Add(ent)
+			ent.Refresh()
+		}
 	}
 	titles.Refresh()
 }
 
 func buildContent(chosenTitle string, titles, content *fyne.Container) {
-	for i := len(titles.Objects); i>0; i-- {
-		titles.Objects[i-1].(*customWidget.TitleEntry).TextStyle.Bold = false
-		if titles.Objects[i-1].(*customWidget.TitleEntry).Text == chosenTitle {
-			titles.Objects[i-1].(*customWidget.TitleEntry).TextStyle.Bold = true
+	if runtime.GOOS == "android" {
+		if chosenTitle == "" {
+			return
 		}
-		titles.Objects[i-1].Refresh()
-	}
-	for i := len(content.Objects); i > 0; i-- {
-		content.Remove(content.Objects[i-1])
-	}
-	/* build new widgets */
-	for i, v := range data[chosenTitle] {
-		ent := customWidget.NewContentEntry()
-		ent.ID = &data[chosenTitle][i]
-		ent.Text = v
-		ent.Password = i % 2 == 1
-		ent.OnSubmitted = func(string) {
-			ent.Submitted()
+		contentWin := a.NewWindow(chosenTitle)
+		/* Remove previous items */
+		for i := len(content.Objects); i > 0; i-- {
+			content.Remove(content.Objects[i-1])
 		}
-		content.Add(ent)
-	}
-	/* add functionality */
-	btnAdd := widget.NewButton("Add", func() {
-		data[chosenTitle] = append(data[chosenTitle], "new", "new")
-		buildContent(chosenTitle,titles, content)
-	})
-	btnGen := widget.NewButton("Generate", func() {
-		generateRandom(chosenTitle, titles, content)
-		buildContent(chosenTitle, titles, content)
-	})
-	if chosenTitle != "" {
+		/* build new widgets */
+		for i, v := range data[chosenTitle] {
+			ent := customWidget.NewContentEntry()
+			ent.ID = &data[chosenTitle][i]
+			ent.Text = v
+			ent.Password = i % 2 == 1
+			ent.OnSubmitted = func(string) {
+				ent.Submitted()
+			}
+			content.Add(ent)
+		}
+		/* add functionality */
+		btnAdd := widget.NewButton("Add", func() {
+			data[chosenTitle] = append(data[chosenTitle], "new", "new")
+			buildContent(chosenTitle,titles, content)
+		})
+		btnGen := widget.NewButton("Generate", func() {
+			generateRandom(chosenTitle, titles, content)
+			buildContent(chosenTitle, titles, content)
+		})
 		content.Add(btnAdd)
 		content.Add(btnGen)
+
+		contentWin.SetContent(content)
+		contentWin.Show()
+
+	} else {
+		/* Mark selected item */
+		for i := len(titles.Objects); i>0; i-- {
+			titles.Objects[i-1].(*customWidget.TitleEntry).TextStyle.Bold = false
+			if titles.Objects[i-1].(*customWidget.TitleEntry).Text == chosenTitle {
+				titles.Objects[i-1].(*customWidget.TitleEntry).TextStyle.Bold = true
+			}
+			titles.Objects[i-1].Refresh()
+		}
+		/* Remove previous items */
+		for i := len(content.Objects); i > 0; i-- {
+			content.Remove(content.Objects[i-1])
+		}
+		/* build new widgets */
+		for i, v := range data[chosenTitle] {
+			ent := customWidget.NewContentEntry()
+			ent.ID = &data[chosenTitle][i]
+			ent.Text = v
+			ent.Password = i % 2 == 1
+			ent.OnSubmitted = func(string) {
+				ent.Submitted()
+			}
+			content.Add(ent)
+		}
+		/* add functionality */
+		btnAdd := widget.NewButton("Add", func() {
+			data[chosenTitle] = append(data[chosenTitle], "new", "new")
+			buildContent(chosenTitle,titles, content)
+		})
+		btnGen := widget.NewButton("Generate", func() {
+			generateRandom(chosenTitle, titles, content)
+			buildContent(chosenTitle, titles, content)
+		})
+		if chosenTitle != "" {
+			content.Add(btnAdd)
+			content.Add(btnGen)
+		}
 	}
 	content.Refresh()
 }

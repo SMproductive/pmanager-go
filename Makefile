@@ -1,7 +1,7 @@
 winFlags = CC=x86_64-w64-mingw32-gcc GOOS=windows CGO_ENABLED=1
 linuxFlags = GOOS=linux
 
-default: windows linux
+default: windows linux android
 
 windows:
 	${winFlags} go build .
@@ -10,6 +10,9 @@ windows:
 linux:
 	${linuxFlags} go build .
 	${linuxFlags} fyne package -os linux
+
+android:
+	fyne package -os android -appID com.pmanager.app
 
 clean:
 	go clean
