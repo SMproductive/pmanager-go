@@ -3,9 +3,6 @@ package main
 * cloud implementation (google, nextcloud)
 * keyboard shortcuts
 */
-/* FIXME
-* crashes on mobile
-*/
 
 import (
 	"crypto/sha256"
@@ -46,12 +43,8 @@ func main() {
 }
 
 func login(win fyne.Window) {
-	if runtime.GOOS == "android" {
-		dataPath = "/storage/emulated/0/Documents/pmanager"
-	} else {
-		home, _ := os.UserHomeDir()
-		dataPath = home + "/.pmanager/passwords"
-	}
+	home, _ := os.UserHomeDir()
+	dataPath = home + "/.pmanager/passwords"
 
 	lblDatabase := widget.NewLabel("Database: ")
 
@@ -87,13 +80,8 @@ func UI(win fyne.Window) {
 
 	var containerTitles *fyne.Container
 	var scrollTitles *container.Scroll
-	if runtime.GOOS == "android" {
-		containerTitles = container.NewVBox()
-		scrollTitles = container.NewVScroll(containerTitles)
-	} else {
-		containerTitles = container.NewHBox()
-		scrollTitles = container.NewHScroll(containerTitles)
-	}
+	containerTitles = container.NewHBox()
+	scrollTitles = container.NewHScroll(containerTitles)
 
 	buildTitles(containerTitles, containerContent)
 
@@ -132,10 +120,6 @@ func addTitle(titles, content *fyne.Container) {
 		ent.Text = str
 		ent.ID = str
 		titles.Add(ent)
-		if runtime.GOOS == "android" {
-			space := widget.NewLabel("")
-			titles.Add(space)
-		}
 		titles.Refresh()
 	}
 }
@@ -165,11 +149,9 @@ func save(containerTitles, contentContainer *fyne.Container) {
 	if err != nil {
 		panic(err)
 	}
-	if runtime.GOOS != "android" {
-		dir, _ := os.UserHomeDir()
-		dir +=  "/.pmanager"
-		os.Mkdir(dir, 0660)
-	}
+	dir, _ := os.UserHomeDir()
+	dir +=  "/.pmanager"
+	os.Mkdir(dir, 0660)
 	ioutil.WriteFile(dataPath, cipherText, 0660)
 	buildDataID()
 	buildTitles(containerTitles, contentContainer)
@@ -214,10 +196,6 @@ func buildTitles(titles, content *fyne.Container) {
 
 		titles.Add(ent)
 		ent.Refresh()
-		if runtime.GOOS == "android" {
-			space := widget.NewLabel("")
-			titles.Add(space)
-		}
 	}
 	titles.Refresh()
 }
