@@ -4,10 +4,11 @@ package main
 * keyboard shortcuts
 */
 /* FIXME
-* Could not create new file on android
+* Android File permission
 */
 
 import (
+	"fmt"
 	"crypto/sha256"
 	"crypto/rand"
 	"encoding/json"
@@ -127,7 +128,7 @@ func UI(win fyne.Window) {
 func addTitle(titles, content *fyne.Container) {
 	str := "new"
 	if data[str] == nil {
-		data[str] = append(data[str] , str, str)
+		data[str] = append(data[str] , "Username:", str)
 		dataID = append(dataID, str)
 		ent := customWidget.NewTitleEntry()
 		ent.SetContent = buildContent
@@ -153,7 +154,11 @@ func save(containerTitles, contentContainer *fyne.Container) {
 				if i+1 == len(data[k]) {
 					break
 				}
-				data[k][i] = data[k][i+1]
+				if data[k][i] != "" {
+					data[k][i] = data[k][i+1]
+				} else if i+2 < len(data[k]) {
+					data[k][i] = data[k][i+2]
+				}
 			}
 		}
 		data[k] = data[k][:len(data[k])-offset]
@@ -169,13 +174,12 @@ func save(containerTitles, contentContainer *fyne.Container) {
 		panic(err)
 	}
 	if runtime.GOOS == "android" {
-		ioutil.WriteFile(dataPath, cipherText, 0660)
 	} else {
 		dir, _ := os.UserHomeDir()
 		dir +=  "/.pmanager"
 		os.Mkdir(dir, 0660)
-		ioutil.WriteFile(dataPath, cipherText, 0660)
 	}
+	ioutil.WriteFile(dataPath, cipherText, 0660)
 	buildDataID()
 	buildTitles(containerTitles, contentContainer)
 	buildContent("", containerTitles, contentContainer)
@@ -327,7 +331,7 @@ func generateRandom(title string, titles, content *fyne.Container) {
 	titleConfig := "Random Generator"
 	word := ""
 	/* make default ascii list */
-	if data[titleConfig] == nil {
+	if len(data[titleConfig]) < 4 {
 		data[titleConfig] = append(data[titleConfig], "Length", "21", "Chars", "")
 		for i := 0x21; i < 0x7f; i++ {
 			data[titleConfig][3] += string(i)
@@ -389,6 +393,15 @@ func decrypt(password string) error {
 		}
 		err = json.Unmarshal(jsonData, &data)
 		if err != nil {
+			return err
+		}
+	} else {
+		err := ioutil.WriteFile(dataPath, nil, 0660)
+		if err != nil {
+			win := a.NewWindow("error" )
+			str := fmt.Sprint(err)
+			win.SetContent(widget.NewLabel(string(str)))
+			win.Show()
 			return err
 		}
 	}
