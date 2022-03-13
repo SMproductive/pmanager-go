@@ -177,7 +177,7 @@ func save(containerTitles, contentContainer *fyne.Container) {
 	} else {
 		dir, _ := os.UserHomeDir()
 		dir +=  "/.pmanager"
-		os.Mkdir(dir, 0660)
+		os.Mkdir(dir, 0777)
 	}
 	ioutil.WriteFile(dataPath, cipherText, 0660)
 	buildDataID()
@@ -396,7 +396,10 @@ func decrypt(password string) error {
 			return err
 		}
 	} else {
-		err := ioutil.WriteFile(dataPath, nil, 0660)
+		noFileErr := "open " + dataPath + ": no such file or directory"
+		if fmt.Sprint(err) == noFileErr {
+			return nil
+		}
 		if err != nil {
 			win := a.NewWindow("error" )
 			str := fmt.Sprint(err)
