@@ -47,12 +47,12 @@ func main() {
 }
 
 func login(win fyne.Window) {
-	if runtime.GOOS == "android" {
+/*	if runtime.GOOS == "android" {
 		dataPath = "/storage/emulated/0/Documents/pmanager"
-	} else {
+	} else { */
 		home, _ := os.UserHomeDir()
 		dataPath = home + "/.pmanager/passwords"
-	}
+	/*}*/
 
 	lblDatabase := widget.NewLabel("Database: ")
 
@@ -101,7 +101,7 @@ func UI(win fyne.Window) {
 	})
 	topBox := container.NewHBox(btnAddTitle, btnSave, btnChangePassword)
 
-	if runtime.GOOS == "android" {
+	/*if runtime.GOOS == "android" {
 		titleGrid := layout.NewGridLayout(2)
 		containerTitles = container.New(titleGrid)
 		scrollTitles = container.NewVScroll(containerTitles)
@@ -109,7 +109,7 @@ func UI(win fyne.Window) {
 
 		mainSplit = container.NewVSplit(topBox, scrollTitles)
 		mainSplit.SetOffset(0.12)
-	} else {
+	} else {*/
 		containerTitles = container.NewHBox()
 		scrollTitles = container.NewHScroll(containerTitles)
 
@@ -120,7 +120,7 @@ func UI(win fyne.Window) {
 
 		mainSplit = container.NewVSplit(topSplit, containerContent)
 		mainSplit.SetOffset(0.12)
-	}
+	/*}*/
 	win.SetContent(mainSplit)
 
 }
@@ -173,12 +173,12 @@ func save(containerTitles, contentContainer *fyne.Container) {
 	if err != nil {
 		panic(err)
 	}
-	if runtime.GOOS == "android" {
-	} else {
+	/*if runtime.GOOS == "android" {
+	} else {*/
 		dir, _ := os.UserHomeDir()
 		dir +=  "/.pmanager"
 		os.Mkdir(dir, 0777)
-	}
+	/*}*/
 	ioutil.WriteFile(dataPath, cipherText, 0660)
 	buildDataID()
 	buildTitles(containerTitles, contentContainer)
@@ -210,7 +210,7 @@ func buildTitles(titles, content *fyne.Container) {
 	}
 
 	/* Build all titles for android */
-	if runtime.GOOS == "android" {
+	/*if runtime.GOOS == "android" {
 		for i := len(data); i > 0; i-- {
 			ent := customWidget.NewTitleEntry()
 			ent.OnSubmitted = func(title string) {
@@ -230,7 +230,7 @@ func buildTitles(titles, content *fyne.Container) {
 				}
 			}
 		}
-	} else {
+	} else {*/
 		/* Build all titles */
 		for i := len(data); i > 0; i-- {
 			ent := customWidget.NewTitleEntry()
@@ -246,21 +246,21 @@ func buildTitles(titles, content *fyne.Container) {
 			titles.Add(ent)
 			ent.Refresh()
 		}
-	}
+	/*}*/
 	titles.Refresh()
 }
 
 func buildContent(chosenTitle string, titles, content *fyne.Container) {
-	if runtime.GOOS == "android" {
+	/*if runtime.GOOS == "android" {
 		if chosenTitle == "" {
 			return
 		}
 		contentWin := a.NewWindow(chosenTitle)
-		/* Remove previous items */
+		// Remove previous items 
 		for i := len(content.Objects); i > 0; i-- {
 			content.Remove(content.Objects[i-1])
 		}
-		/* build new widgets */
+		// build new widgets
 		for i, v := range data[chosenTitle] {
 			ent := customWidget.NewContentEntry()
 			ent.ID = &data[chosenTitle][i]
@@ -271,7 +271,7 @@ func buildContent(chosenTitle string, titles, content *fyne.Container) {
 			}
 			content.Add(ent)
 		}
-		/* add functionality */
+		// add functionality 
 		btnAdd := widget.NewButton("Add", func() {
 			data[chosenTitle] = append(data[chosenTitle], "new", "new")
 			buildContent(chosenTitle,titles, content)
@@ -286,7 +286,7 @@ func buildContent(chosenTitle string, titles, content *fyne.Container) {
 		contentWin.SetContent(content)
 		contentWin.Show()
 
-	} else {
+	} else {*/
 		/* Mark selected item */
 		for i := len(titles.Objects); i>0; i-- {
 			titles.Objects[i-1].(*customWidget.TitleEntry).TextStyle.Bold = false
@@ -323,7 +323,7 @@ func buildContent(chosenTitle string, titles, content *fyne.Container) {
 			content.Add(btnAdd)
 			content.Add(btnGen)
 		}
-	}
+	/*}*/
 	content.Refresh()
 }
 
