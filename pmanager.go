@@ -1,7 +1,6 @@
 package main
 /* TODO
 * cloud implementation (google, nextcloud)
-* keyboard shortcuts
 */
 /* FIXME
 * Android File permission
@@ -17,6 +16,7 @@ import (
 	mrand "math/rand"
 	"os"
 	"strconv"
+	"sort"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -256,7 +256,7 @@ func buildContent(chosenTitle string, titles, content *fyne.Container) {
 			return
 		}
 		contentWin := a.NewWindow(chosenTitle)
-		// Remove previous items 
+		// Remove previous items
 		for i := len(content.Objects); i > 0; i-- {
 			content.Remove(content.Objects[i-1])
 		}
@@ -271,7 +271,7 @@ func buildContent(chosenTitle string, titles, content *fyne.Container) {
 			}
 			content.Add(ent)
 		}
-		// add functionality 
+		// add functionality
 		btnAdd := widget.NewButton("Add", func() {
 			data[chosenTitle] = append(data[chosenTitle], "new", "new")
 			buildContent(chosenTitle,titles, content)
@@ -380,6 +380,7 @@ func buildDataID() {
 	for k := range data {
 		dataID = append(dataID, k)
 	}
+	sort.Strings(dataID)
 }
 
 func decrypt(password string) error {
