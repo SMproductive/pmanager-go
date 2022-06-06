@@ -371,7 +371,7 @@ func generateRandom(title string, titles, content *fyne.Container) {
 		}
 		word += string(data[titleConfig][3][mrand.Int()%len(data[titleConfig][3])])
 	}
-	data[title] = append(data[title], "New random", word)
+	data[title] = append(data[title], "Password", word)
 }
 
 /* builds the slice from ground up new */
