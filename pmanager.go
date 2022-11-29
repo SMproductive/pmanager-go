@@ -91,7 +91,7 @@ func UI(win fyne.Window) {
 	btnAddTitle := widget.NewButton("Add", func() {
 		addTitle(containerTitles, containerContent)
 	})
-	btnSave := widget.NewButton("Save", func() {
+	btnSave := widget.NewButton("Save and close", func() {
 		save(containerTitles, containerContent)
 	})
 	topBox := container.NewHBox(btnAddTitle, btnSave, btnChangePassword)
